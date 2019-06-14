@@ -3,13 +3,44 @@ const argon = require('argon2');
 const jwt = require('jsonwebtoken');
 const UserModel = require('../models/user');
 
+authenticationRoute.post('/create', (req, res) => {
+  const { email, password } = req.body;
+  argon.hash(password, {
+    type: argon.argon2id,
+    memoryCost: 2 ** 16,
+    hashLength: 64,
+    timeCost: 8
+  })
+    .then((hash) => {
+      const newUser = new UserModel({ email, password: hash });
+      UserModel(newUser).save((err) => {
+        if (err) {
+          const json = { success: false };
+          switch (err.code) {
+            case 11000:
+              json.message = 'This address is already in use.';
+              break;
+            default:
+              break;
+          }
+          return res.send(json);
+        }
+        return res.send({ success: true });
+      });
+    })
+    .catch(() => {
+      res.status = 500;
+      return res;
+    });
+});
+
 authenticationRoute.post('/login', (req, res) => UserModel.findOne({ email: req.body.email })
   .then((doc) => {
     const { email, password, _id: id } = doc;
     if (!id || !req.body.password) {
       return res.json({
         success: false,
-        message: 'Email or password is incorrect'
+        payload: 'Email or password is incorrect'
       });
     }
     return argon.verify(password, req.body.password)
@@ -24,7 +55,7 @@ authenticationRoute.post('/login', (req, res) => UserModel.findOne({ email: req.
             if (err) {
               return res.json({
                 success: false,
-                message: 'Something went very wrong.'
+                payload: 'Something went very wrong.'
               });
             }
             return res.json({
@@ -35,7 +66,7 @@ authenticationRoute.post('/login', (req, res) => UserModel.findOne({ email: req.
         }
         return res.json({
           success: false,
-          message: 'Email or password is incorrect'
+          payload: 'Email or password is incorrect'
         });
       });
   })
@@ -43,7 +74,7 @@ authenticationRoute.post('/login', (req, res) => UserModel.findOne({ email: req.
     res.statusCode = 500;
     return res.json({
       success: false,
-      message: 'Internal bzzt error.'
+      payload: 'Internal bzzt error.'
     });
   }));
 

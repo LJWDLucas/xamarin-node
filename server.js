@@ -17,15 +17,18 @@ const passport = require('./authentication/config');
 
 server.use(passport.initialize());
 
-const userRoute = require('./routes/user');
+const usersRoute = require('./routes/user');
 const authenticationRoute = require('./routes/authentication');
+const assignmentsRoute = require('./routes/assignments');
+const deliverablesRoute = require('./routes/deliverables');
 
-server.use('/api/v1', userRoute);
-server.use('/api/v1', authenticationRoute);
-server.post('/test', passport.authenticate('jwt', { session: false }), (req, res) => {
-  console.log(res);
-  return res.json({ test: 'test' });
-});
+const apiVersion = '/api/v1';
+const authenticate = passport.authenticate('jwt', { session: false });
+
+server.use(apiVersion, authenticate, assignmentsRoute);
+server.use(apiVersion, authenticate, usersRoute);
+server.use(apiVersion, authenticate, deliverablesRoute);
+server.use('/auth', authenticationRoute);
 
 https.createServer({
   key: fs.readFileSync('server.key'),
